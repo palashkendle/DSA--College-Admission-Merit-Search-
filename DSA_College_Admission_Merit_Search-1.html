@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Binary search: admission ID lookup</title>
+<style>
+:root{--bg:#f6f7f4;--card:#fff;--ink:#1d2320;--mute:#5c665f;--line:#d9ddd6;--out:#e9ebe6;--outink:#9aa39c;--range:#e3f1ea;--mid:#f7c948;--midink:#3d2f00;--ok:#1f8a5b;--okink:#fff;--bad:#b3392f;--lo:#2f6fb3;--hi:#8a4fb3;--code:#12201b;--codeink:#d7e6de;--hl:#2d5b47;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a17;--card:#1c2420;--ink:#e6ece8;--mute:#9aa8a0;--line:#33403a;--out:#222b26;--outink:#5d6a63;--range:#1f3a2e;--mid:#e5b92e;--midink:#2a2000;--ok:#2fb77c;--okink:#06241a;--bad:#e5766b;--lo:#6aa6e6;--hi:#bb8ae6;--code:#0d1411;--codeink:#cfe0d6;--hl:#2d5b47}}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+main{max-width:860px;margin:0 auto;padding:18px 14px 40px}
+h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--mute);font-size:14px;line-height:1.5;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+label{font-size:13px;color:var(--mute)}
+input{font:inherit;font-size:16px;width:120px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+button{font:inherit;font-size:14px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer;min-height:38px}
+button.go{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--lo);outline-offset:2px}
+.chip{font-size:13px;padding:5px 10px;min-height:0;border-radius:999px;color:var(--mute)}
+.err{color:var(--bad);font-size:13px;min-height:18px;margin-top:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(44px,1fr));gap:6px}
+.cell{border:1px solid var(--line);border-radius:8px;background:var(--range);text-align:center;padding:5px 0 4px;transition:background .2s,color .2s}
+.cell .ix{font-size:11px;color:var(--mute)}
+.cell .id{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.cell.out{background:var(--out);color:var(--outink);border-style:dashed}
+.cell.out .ix{color:var(--outink)}
+.cell.mid{background:var(--mid);color:var(--midink);border-color:var(--mid)}
+.cell.mid .ix{color:var(--midink)}
+.cell.found{background:var(--ok);color:var(--okink);border-color:var(--ok)}
+.cell.found .ix{color:var(--okink)}
+.tags{height:18px;display:flex;justify-content:center;gap:2px;margin-top:3px}
+.tag{font-size:11px;font-weight:600;line-height:16px;padding:0 4px;border-radius:4px;color:#fff}
+.tag.l{background:var(--lo)}.tag.m{background:#b88a00}.tag.h{background:var(--hi)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--mute);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.cols{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:760px){.cols{grid-template-columns:1fr 1fr}}
+pre{margin:0;background:var(--code);color:var(--codeink);border-radius:10px;padding:10px 0;font-family:ui-monospace,Consolas,Menlo,monospace;font-size:12.5px;line-height:1.65;overflow-x:auto}
+.ln{display:block;padding:0 12px;white-space:pre;border-left:3px solid transparent}
+.ln.on{background:var(--hl);border-left-color:var(--mid)}
+#log{font-size:14px;line-height:1.55;margin:0;padding:0;list-style:none;max-height:260px;overflow-y:auto}
+#log li{padding:7px 0;border-bottom:1px solid var(--line)}
+#log li:last-child{border-bottom:0}
+#log b{font-weight:600}
+.stat{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--mute)}
+.stat strong{color:var(--ink);font-weight:600}
+h2{font-size:15px;font-weight:600;margin:0 0 8px}
+.msg{font-size:15px;line-height:1.5;margin-top:10px;min-height:22px}
+@media(prefers-reduced-motion:reduce){.cell{transition:none}}
+</style>
+</head>
+<body>
+<main>
+<h1>Binary search on the merit register</h1>
+<p class="sub">Student IDs are kept sorted. Binary search finds an ID by halving the range each step, so 16 students need at most 5 checks, not 16.</p>
+
+<section class="card" aria-label="Controls">
+  <div class="row">
+    <label for="key">Search ID</label>
+    <input id="key" type="number" inputmode="numeric" value="1038">
+    <button id="next" class="go">Pick middle</button>
+    <button id="auto">Auto play</button>
+    <button id="reset">Reset</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button class="chip" data-k="1038">Try 1038 (found)</button>
+    <button class="chip" data-k="1002">Try 1002 (first)</button>
+    <button class="chip" data-k="1019">Try 1019 (not in list)</button>
+  </div>
+  <div class="err" id="err" role="alert"></div>
+</section>
+
+<section class="card" aria-label="Sorted ID array">
+  <div class="grid" id="grid"></div>
+  <div class="legend">
+    <span><i style="background:var(--range);border:1px solid var(--line)"></i>still possible</span>
+    <span><i style="background:var(--mid)"></i>middle being checked</span>
+    <span><i style="background:var(--out);border:1px dashed var(--outink)"></i>ruled out</span>
+    <span><i style="background:var(--ok)"></i>found</span>
+  </div>
+  <div class="msg" id="msg" aria-live="polite">Press “Pick middle” to start.</div>
+  <div class="stat"><span>Checks so far: <strong id="cnt">0</strong></span><span>Worst case for n = 16: <strong>5</strong></span><span>Complexity: <strong>O(log n)</strong></span></div>
+</section>
+
+<div class="cols">
+  <section class="card" aria-label="Code">
+    <h2>C++ code running</h2>
+<pre id="code"><span class="ln" data-l="0">int lo = 0, hi = n - 1;</span><span class="ln" data-l="1">while (lo &lt;= hi) {</span><span class="ln" data-l="2">    int mid = (lo + hi) / 2;</span><span class="ln" data-l="3">    if (a[mid].id == key)</span><span class="ln" data-l="4">        return mid;</span><span class="ln" data-l="5">    else if (a[mid].id &lt; key)</span><span class="ln" data-l="6">        lo = mid + 1;</span><span class="ln" data-l="7">    else</span><span class="ln" data-l="8">        hi = mid - 1;</span><span class="ln" data-l="9">}</span><span class="ln" data-l="10">return -1;  // not found</span></pre>
+  </section>
+  <section class="card" aria-label="Step log">
+    <h2>What happened</h2>
+    <ul id="log"><li style="color:var(--mute)">Steps will appear here.</li></ul>
+  </section>
+</div>
+</main>
+<script>
+var S=[["1002","Aisha Khan"],["1005","Rohan Patil"],["1009","Sana Shaikh"],["1011","Aditya Rao"],["1014","Pooja Jadhav"],["1018","Imran Khan"],["1021","Neha Joshi"],["1025","Kabir Mehta"],["1027","Zoya Ansari"],["1030","Omkar Deshmukh"],["1034","Riya Kulkarni"],["1038","Farhan Sheikh"],["1041","Isha Gaikwad"],["1045","Yash Pawar"],["1049","Mariam Syed"],["1052","Tanvi More"]];
+var A=S.map(function(s){return parseInt(s[0],10)});
+var n=A.length,lo,hi,mid,key,phase,done,found,count,timer=null;
+var grid=document.getElementById("grid"),msg=document.getElementById("msg"),log=document.getElementById("log"),err=document.getElementById("err"),nextB=document.getElementById("next");
+
+function lines(){var a=[].slice.call(arguments);[].forEach.call(document.querySelectorAll(".ln"),function(e){e.classList.toggle("on",a.indexOf(+e.dataset.l)>-1)})}
+function draw(){
+  var h="";
+  for(var i=0;i<n;i++){
+    var c="cell",t="";
+    var inR=!done&&i>=lo&&i<=hi;
+    if(found&&i===mid)c+=" found";
+    else if(phase===1&&i===mid)c+=" mid";
+    else if(started()&&!inR)c+=" out";
+    if(started()&&!done){if(i===lo)t+='<span class="tag l">L</span>';if(phase===1&&i===mid)t+='<span class="tag m">M</span>';if(i===hi)t+='<span class="tag h">H</span>'}
+    h+='<div><div class="'+c+'"><div class="ix">'+i+'</div><div class="id">'+A[i]+'</div></div><div class="tags">'+t+'</div></div>';
+  }
+  grid.innerHTML=h;
+  document.getElementById("cnt").textContent=count;
+}
+function started(){return key!==null}
+function add(html){if(!log.dataset.on){log.innerHTML="";log.dataset.on=1}var li=document.createElement("li");li.innerHTML=html;log.appendChild(li);log.scrollTop=log.scrollHeight}
+function init(){
+  stop();lo=0;hi=n-1;mid=-1;key=null;phase=0;done=false;found=false;count=0;
+  log.innerHTML='<li style="color:var(--mute)">Steps will appear here.</li>';delete log.dataset.on;
+  msg.textContent="Press “Pick middle” to start.";nextB.textContent="Pick middle";nextB.disabled=false;err.textContent="";
+  lines(0);draw();
+}
+function readKey(){
+  var v=parseInt(document.getElementById("key").value,10);
+  if(isNaN(v)){err.textContent="Enter a student ID first";return null}
+  err.textContent="";return v;
+}
+function step(){
+  if(done)return;
+  if(key===null){var k=readKey();if(k===null){stop();return}key=k;lines(0,1);add("Start: <b>lo = 0</b>, <b>hi = "+(n-1)+"</b>, looking for <b>"+key+"</b>.")}
+  if(phase===0){
+    if(lo>hi){finish(false);return}
+    mid=Math.floor((lo+hi)/2);phase=1;
+    lines(2);
+    msg.innerHTML="mid = ("+lo+" + "+hi+") / 2 = <b>"+mid+"</b>. Check a["+mid+"] = <b>"+A[mid]+"</b>.";
+    add("<b>Step "+(count+1)+":</b> range "+lo+" to "+hi+", mid = "+mid+" → ID "+A[mid]+".");
+    nextB.textContent="Compare with "+key;draw();
+  }else{
+    count++;phase=0;
+    if(A[mid]===key){found=true;lines(3,4);msg.innerHTML="<b>Found.</b> "+S[mid][1]+" is at index "+mid+" after "+count+" checks.";add("<b>"+A[mid]+" = "+key+"</b>, found "+S[mid][1]+".");finish(true);return}
+    if(A[mid]<key){lines(3,5,6);add(A[mid]+" &lt; "+key+" → key is on the right. Move <b>lo = "+(mid+1)+"</b>.");msg.innerHTML=A[mid]+" is smaller than "+key+", so everything left of it is ruled out.";lo=mid+1}
+    else{lines(3,5,7,8);add(A[mid]+" &gt; "+key+" → key is on the left. Move <b>hi = "+(mid-1)+"</b>.");msg.innerHTML=A[mid]+" is bigger than "+key+", so everything right of it is ruled out.";hi=mid-1}
+    nextB.textContent="Pick middle";
+    if(lo>hi){finish(false);return}
+    draw();
+  }
+}
+function finish(ok){
+  done=true;stop();nextB.disabled=true;nextB.textContent="Done";
+  if(!ok){lines(1,10);msg.innerHTML="<b>Not found.</b> lo passed hi after "+count+" checks, so ID "+key+" isn’t in the list.";add("lo &gt; hi → loop ends, return <b>-1</b>.")}
+  draw();
+}
+function stop(){if(timer){clearInterval(timer);timer=null}document.getElementById("auto").textContent="Auto play"}
+document.getElementById("next").onclick=function(){stop();step()};
+document.getElementById("auto").onclick=function(){
+  if(timer){stop();return}
+  if(done)return;
+  this.textContent="Pause";step();
+  timer=setInterval(function(){if(done){stop();return}step()},1100);
+};
+document.getElementById("reset").onclick=init;
+[].forEach.call(document.querySelectorAll(".chip"),function(b){b.onclick=function(){document.getElementById("key").value=b.dataset.k;init()}});
+document.getElementById("key").addEventListener("input",function(){if(started()&&!done||done)init()});
+init();
+</script>
+</body>
+</html>
